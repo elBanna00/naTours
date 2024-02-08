@@ -1,0 +1,11 @@
+{
+  "watch": ["./"],
+  "ext": ".ts,.js",
+  "exec": "tsx ./server.ts",
+  "env": {
+    "NODE_ENV": "development",
+    "PORT": "8000",
+    "DATABASE": "mongodb+srv://natoursAPI:<PASSWORD>@cluster0.6ewnea4.mongodb.net/Natours?retryWrites=true&w=majority",
+    "DATABASE_PASSWORD": "VAlYMKuiFufdqQXv"
+  }
+}

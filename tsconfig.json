@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "baseUrl": "./",
+    "outDir": "dist",
+    "sourceMap": true,
+    "noImplicitAny": true,
+  },
+  "ts-node": {
+    // Tell ts-node CLI to install the --loader automatically, explained below
+    "esm": true,
+  },
+  "include": ["./**/*"],
+}
