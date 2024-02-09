@@ -1,7 +1,8 @@
-import express, { Response, Request } from 'express';
+import express, { Response, Request, NextFunction, query } from 'express';
 // import * as fs from 'fs';
 import * as url from 'url';
 import tourModel from './../models/tourModel';
+import { Query } from 'express-serve-static-core';
 
 // const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 // const tours = JSON.parse(
@@ -29,25 +30,100 @@ import tourModel from './../models/tourModel';
 //   }
 //   next();
 // };
-export const getAllTours = (req: express.Request, res: express.Response) => {
-  // console.log(req.requestTime);
-  res.status(200).json({
-    status: `success`,
-    // requestedAt: req.requestTime,
-    // count: tours.length,
-    // data: { tours: tours },
-  });
+const queryType = typeof tourModel.find();
+export const aliasTopTours = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  req.query.limit = '5';
+  req.query.sort = '-ratingAverage,price';
+  req.query.fields = 'name,price,ratingAverage,summary,difficulty';
+  next();
 };
-export const getTour = (req: express.Request, res: express.Response) => {
-  // console.log(req.params);
-  // const id = parseInt(req.params.id, 10);
-  // const tour = tours.find((t: typeof tours) => t.id === id);
-  res.status(200).json({
-    status: `success`,
-    // data: { tour },
-    // count : tours.length,
-    // data : {tours : tours }
-  });
+class APIFeatures {
+  query: any;
+  queryString: Query;
+
+  constructor(query: any, queryString: Query) {
+    this.query = query;
+    this.queryString = queryString;
+  }
+  filter() {
+    const filteredQuery = { ...this.queryString };
+    const exculdedQueries = ['page', 'sort', 'limit', 'fields'];
+    exculdedQueries.forEach((el) => delete filteredQuery[el]);
+
+    let strQuery = JSON.stringify(filteredQuery);
+    strQuery = strQuery.replace(/\b(gte|gt|lte|lt)\b/g, (el) => `$${el}`);
+    this.query = this.query.find(JSON.parse(strQuery));
+    return this;
+  }
+  sort() {
+    if (this.queryString.sort) {
+      const sortBy = String(this.queryString.sort).split(',').join(' ');
+      this.query = this.query.sort(sortBy);
+    } else {
+      this.query = this.query.sort('-createdAt');
+    }
+    return this;
+  }
+  limitFields() {
+    if (this.queryString.fields) {
+      const fields = String(this.queryString.fields).split(',').join(' ');
+      this.query = this.query.select(fields);
+    } else {
+      this.query = this.query.select('-__v');
+    }
+    return this;
+  }
+  paginate() {
+    const page = Number(this.queryString.page) || 1;
+    const limit = Number(this.queryString.limit) || 100;
+    const skips = (page - 1) * limit;
+
+    this.query = this.query.skip(skips).limit(limit);
+    return this;
+  }
+}
+export const getAllTours = async (
+  req: express.Request,
+  res: express.Response,
+) => {
+  try {
+    const features = new APIFeatures(tourModel.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+    const tours = await features.query;
+    res.status(200).json({
+      status: `success`,
+      count: tours.length,
+      data: { tours },
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(404).json({
+      status: 'Fail',
+      message: err,
+    });
+  }
+};
+export const getTour = async (req: express.Request, res: express.Response) => {
+  try {
+    const tour = await tourModel.findById(req.params.id);
+    res.status(200).json({
+      status: `success`,
+
+      data: tour,
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: 'Fail',
+      message: err,
+    });
+  }
 };
 export const createTour = async (
   req: express.Request,
@@ -65,16 +141,35 @@ export const createTour = async (
   res.send('done');
 };
 export const updateTour = (req: express.Request, res: express.Response) => {
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour: '<Updated tour here...>',
-    },
-  });
+  try {
+    const tour = tourModel.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    res.status(200).json({
+      status: 'success',
+      data: {
+        tour,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'Fail',
+      message: err,
+    });
+  }
 };
 export const deleteTour = (req: express.Request, res: express.Response) => {
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  try {
+    tourModel.findByIdAndDelete(req.params.id);
+    res.status(204).json({
+      status: 'success',
+      data: null,
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'Fail',
+      message: err,
+    });
+  }
 };
