@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import log from 'utils/logger';
 import dotenv from 'dotenv';
 dotenv.config({ path: './config.env' });
 
@@ -22,10 +23,10 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log('DB connected ');
+    log.info('DB connected ');
   });
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Listening on post: ${port}`);
+  log.info(`Listening on post: ${port}`);
 });
